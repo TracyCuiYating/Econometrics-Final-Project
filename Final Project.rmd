@@ -1,0 +1,124 @@
+---
+title: "Final Project"
+author: "Erin & Tracy"
+date: "2019/12/13"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("readr")
+install.packages("ggplot2")
+install.packages("sandwich")
+install.packages("lmtest")
+install.packages("dplyr")
+install.packages("psych")
+```
+
+```{r}
+library(readr)
+library(ggplot2)
+library(sandwich)
+library(lmtest)
+library(dplyr)
+library(psych)
+```
+
+
+```{r}
+Crime <- read_csv("Final project Data.csv")
+Crime2 <- read_csv("Final project Data2.csv")
+Crime$crimerate <- Crime$ViolentCrimeRate+Crime$PropertyCrimeRate
+```
+
+
+# Graphs
+```{r}
+ggplot(data=Crime2, aes(x=Year, y=CrimeRate, group=PropertyCrime, color=PropertyCrime)) + geom_line() + geom_point() + geom_vline(xintercept=2012, linetype="dashed", color = "red")
+```
+# Data Summary
+```{r}
+summary(Crime)
+describe(Crime)
+```
+
+
+General Population Model:
+$$CrimeRate_{t} = \beta_0 +\beta_1Population_t + \beta_2 Legalization_t + \beta_3 Crime_t + u_t$$
+
+```{r}
+Crime$Legalization <- ifelse(Crime$Year > 2012, 1, 0) 
+```
+
+# Violent Crimes 
+## Population Model:
+$$ViolentCrimeRate_{t} = \beta_0 +\beta_1Population_t + \beta_2 Legalization_t + \beta_3 Year + \beta_4 ViolentCrimeRate_{t-1} + u_t$$
+```{r}
+model1 <- lm(ViolentCrimeRate ~ Population + lag(ViolentCrimeRate,1) + Year + Legalization, data = Crime)
+summary(model1)
+coeftest(model1, vcov = vcovHC(model1, type="HC1"))
+```
+##Graph
+```{r}
+plot(Crime$Year,Crime$ViolentCrimeRate)
+abline(v=2012, col="blue")
+```
+##Test for Heteroscedasticity and autocorrelation
+```{r}
+Crime$e_1 <- c(NA, residuals(model1))
+plot(Crime$Year, Crime$e_1, main = " ", xlab="Year", ylab="Residuals")
+abline(lm(Crime$e_1 ~ Crime$Year), col="red")
+bgtest(model1, order=1, type="F")
+bptest(model1)
+```
+
+
+# Property Crimes 
+## Population Model:
+$$Property Crime Rate_{t} = \beta_0 +\beta_1Population_t + \beta_2 Legalization_t + \beta_3 Year + \beta_4 PropertyCrimeRate_{t-1} + u_t$$
+```{r}
+model2 <- lm(PropertyCrimeRate ~ Population + lag(PropertyCrimeRate,1) + Year + Legalization, data = Crime)
+summary(model2)
+coeftest(model2, vcov = vcovHC(model1, type="HC1"))
+```
+##Graph
+```{r}
+plot(Crime$Year,Crime$PropertyCrimeRate)
+abline(v=2012, col="blue")
+```
+
+##Test for Heteroscedasticity and autocorrelation
+```{r}
+Crime$e_2 <- c(NA, residuals(model2))
+plot(Crime$Year, Crime$e_2, main = " ", xlab="Year", ylab="Residuals")
+abline(lm(Crime$e_2 ~ Crime$Year), col="red")
+bgtest(model2, order=1, type="F")
+bptest(model2)
+```
+
+
+# Total Crimes Rate
+## Population Model:
+$$Crime Rate_{t} = \beta_0 +\beta_1Population_t + \beta_2 Legalization_t + \beta_3 Year + \beta_4 CrimeRate_{t-1} + u_t$$
+```{r}
+model3 <- lm(crimerate ~ Population + lag(crimerate,1) + Year + Legalization, data = Crime)
+summary(model3)
+coeftest(model3, vcov = vcovHC(model1, type="HC1"))
+```
+##Graph
+```{r}
+plot(Crime$Year,Crime$crimerate)
+abline(v=2012, col="blue")
+```
+##Test for Heteroscedasticity and autocorrelation
+```{r}
+Crime$e_3 <- c(NA, residuals(model3))
+plot(Crime$Year, Crime$e_3, main = " ", xlab="Year", ylab="Residuals")
+abline(lm(Crime$e_3 ~ Crime$Year), col="red")
+bgtest(model3, order=1, type="F")
+bptest(model3)
+```
+
